@@ -3,56 +3,76 @@ package taskmanager.model;
 import java.time.LocalDateTime;
 
 /**
- * Represents a user-defined task with scheduling metadata.
- * A task can be marked as outdoor, which makes it subject to
- * weather-based scheduling recommendations.
+ * Immutable data carrier representing a user-defined task.
+ *
+ * <p>Implemented as a <b>Java Record</b> to eliminate boilerplate
+ * (canonical constructor, {@code equals}, {@code hashCode}, {@code toString})
+ * while keeping the data fully immutable after construction.
+ *
+ * <p>A task can be marked as outdoor ({@link #outdoor()}), which makes it
+ * subject to weather-aware scheduling recommendations from
+ * {@link taskmanager.api.SchedulePlanner}.
+ *
+ * @param id          unique identifier (UUID string)
+ * @param title       display title; may be blank — validated at the service layer
+ * @param description optional additional detail about the task (never null after construction)
+ * @param dateTime    scheduled date and time for the activity
+ * @param outdoor     {@code true} if the task takes place outdoors
  */
-public class Task {
-    private String id;
-    private String title;
-    private LocalDateTime dateTime;
-    private boolean outdoor;
+public record Task(
+        String id,
+        String title,
+        String description,
+        LocalDateTime dateTime,
+        boolean outdoor) {
 
     /**
-     * Constructs a new Task.
-     *
-     * @param id       unique identifier for the task
-     * @param title    display title of the task; must not be null or empty
-     * @param dateTime the scheduled date and time for the task
-     * @param outdoor  {@code true} if the task takes place outdoors
+     * Compact constructor — normalises {@code null} inputs so every
+     * component is safe to use without null-checks downstream.
      */
-    public Task(String id, String title, LocalDateTime dateTime, boolean outdoor) {
-        this.id = id;
-        this.title = title;
-        this.dateTime = dateTime;
-        this.outdoor = outdoor;
+    public Task {
+        title       = (title == null)       ? "" : title.trim();
+        description = (description == null) ? "" : description.trim();
     }
 
     /**
-     * Returns the unique identifier of this task.
+     * Convenience constructor for callers that do not supply a description.
      *
-     * @return the task ID
+     * @param id       unique identifier
+     * @param title    task title
+     * @param dateTime scheduled date/time
+     * @param outdoor  {@code true} for outdoor tasks
      */
-    public String getId() { return id; }
+    public Task(String id, String title, LocalDateTime dateTime, boolean outdoor) {
+        this(id, title, "", dateTime, outdoor);
+    }
 
-    /**
-     * Returns the title of this task.
-     *
-     * @return the task title
-     */
-    public String getTitle() { return title; }
+    // ------------------------------------------------------------------
+    // Backward-compatible getter aliases
+    // Records expose components as outdoor(), id() etc.
+    // These aliases preserve the conventional get/is-prefix API.
+    // ------------------------------------------------------------------
 
-    /**
-     * Returns the scheduled date and time of this task.
-     *
-     * @return the task's {@link LocalDateTime}
-     */
-    public LocalDateTime getDateTime() { return dateTime; }
+    /** @return the unique task identifier */
+    public String getId() { return id(); }
+
+    /** @return the task display title */
+    public String getTitle() { return title(); }
+
+    /** @return optional task description, never {@code null} */
+    public String getDescription() { return description(); }
+
+    /** @return the scheduled date and time */
+    public LocalDateTime getDateTime() { return dateTime(); }
 
     /**
      * Returns whether this task is an outdoor activity.
      *
-     * @return {@code true} if the task is outdoor
+     * <p>Records generate an accessor named {@code outdoor()} for boolean
+     * components (no {@code is}-prefix). This alias satisfies callers that
+     * expect the conventional naming.
+     *
+     * @return {@code true} if the task is outdoors
      */
-    public boolean isOutdoor() { return outdoor; }
+    public boolean isOutdoor() { return outdoor(); }
 }
