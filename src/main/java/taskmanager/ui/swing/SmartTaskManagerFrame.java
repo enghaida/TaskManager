@@ -1,169 +1,147 @@
-package taskmanager.ui.swing;
+package taskmanager.ui;
 
 import taskmanager.api.TaskManager;
 import taskmanager.impl.TaskManagerImpl;
 import taskmanager.model.Task;
-import taskmanager.service.WeatherService;
+import reactor.core.scheduler.Schedulers;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
 public class SmartTaskManagerFrame extends JFrame {
 
-    private final TaskManager manager = new TaskManagerImpl();
-    private final WeatherService weatherService = new WeatherService();
-
-    private final JTextField titleField = new JTextField(15);
-    private final JCheckBox outdoorBox = new JCheckBox("Outdoor");
-
-    private final DefaultTableModel model = new DefaultTableModel();
-    private final JTable table = new JTable(model);
-
-    private final JLabel statusLabel = new JLabel(" ");
-
-    private final JLabel cityLabel = new JLabel("City: —");
-    private final JLabel tempLabel = new JLabel("Temperature: —");
-    private final JLabel conditionLabel = new JLabel("Condition: —");
-    private final JLabel humidityLabel = new JLabel("Humidity: —");
+    private final TaskManager taskManager;
+    private final DefaultTableModel tableModel;
+    private final JTable taskTable;
 
     public SmartTaskManagerFrame() {
-        setTitle("Smart Task Manager");
-        setSize(750, 400);
-        setLayout(new BorderLayout());
+        this.taskManager = new TaskManagerImpl();
 
-        JPanel top = new JPanel();
-
-        JButton addBtn = new JButton("Add");
-        JButton editBtn = new JButton("Edit");
-        JButton deleteBtn = new JButton("Delete");
-        JButton weatherBtn = new JButton("Refresh Weather");
-
-        top.add(new JLabel("Title:"));
-        top.add(titleField);
-        top.add(outdoorBox);
-        top.add(addBtn);
-        top.add(editBtn);
-        top.add(deleteBtn);
-        top.add(weatherBtn);
-
-        add(top, BorderLayout.NORTH);
-
-        model.addColumn("ID");
-        model.addColumn("Title");
-
-        add(new JScrollPane(table), BorderLayout.CENTER);
-
-        JPanel weatherPanel = new JPanel(new GridLayout(4, 1));
-        weatherPanel.setBorder(BorderFactory.createTitledBorder("Current Weather"));
-        weatherPanel.add(cityLabel);
-        weatherPanel.add(tempLabel);
-        weatherPanel.add(conditionLabel);
-        weatherPanel.add(humidityLabel);
-
-        add(weatherPanel, BorderLayout.EAST);
-        add(statusLabel, BorderLayout.SOUTH);
-
-        addBtn.addActionListener(e -> addTask());
-        editBtn.addActionListener(e -> editTask());
-        deleteBtn.addActionListener(e -> deleteTask());
-        weatherBtn.addActionListener(e -> loadWeather());
-
-        table.getSelectionModel().addListSelectionListener(e -> {
-            int row = table.getSelectedRow();
-            if (row != -1) {
-                titleField.setText((String) model.getValueAt(row, 1));
-            }
-        });
-
-        loadWeather();
-
+        setTitle("Manager (Swing)");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setSize(900, 600);
+
+        String[] columns = {"ID", "Title", "Due Time", "Weather Sensitive", "Status"};
+        tableModel = new DefaultTableModel(columns, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) { return false; }
+        };
+        taskTable = new JTable(tableModel);
+
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JButton editBtn = new JButton("Edit Task");
+        JButton deleteBtn = new JButton("Delete Task");
+        JButton updateWeatherBtn = new JButton("Update Weather");
+        JButton suggestBtn = new JButton("Suggest Schedule");
+        JButton addBtn = new JButton("Add Task");
+
+        buttonPanel.add(editBtn);
+        buttonPanel.add(deleteBtn);
+        buttonPanel.add(updateWeatherBtn);
+        buttonPanel.add(suggestBtn);
+        buttonPanel.add(addBtn);
+
+        setLayout(new BorderLayout());
+        add(new JScrollPane(taskTable), BorderLayout.CENTER);
+        add(buttonPanel, BorderLayout.SOUTH);
+
+        addBtn.addActionListener(e -> showAddTaskDialog());
+        deleteBtn.addActionListener(e -> deleteSelectedTask());
+        updateWeatherBtn.addActionListener(e -> updateRecommendation());
+        suggestBtn.addActionListener(e -> updateRecommendation());
+
+        setupTaskListener();
+        refreshTasks();
+        
+        setLocationRelativeTo(null);
         setVisible(true);
     }
 
-    private void addTask() {
-        Task task = new Task(
-                UUID.randomUUID().toString(),
-                titleField.getText(),
-                LocalDateTime.now(),
-                outdoorBox.isSelected()
-        );
+    private void setupTaskListener() {
+        taskManager.addChangeListener(new TaskManager.ChangeListener() {
+            @Override
+            public void onTaskCreated(Task t) { SwingUtilities.invokeLater(() -> refreshTasks()); }
+            @Override
+            public void onTaskDeleted(String id) { SwingUtilities.invokeLater(() -> refreshTasks()); }
+            @Override
+            public void onTaskUpdated(Task t) { SwingUtilities.invokeLater(() -> refreshTasks()); }
+        });
+    }
 
-        manager.createTask(task)
-                .flatMap(manager::getRecommendation)
-                .subscribe(rec -> SwingUtilities.invokeLater(() -> {
-                    model.addRow(new Object[]{task.getId(), task.getTitle()});
-                    statusLabel.setText(rec.getMessage());
-                    titleField.setText("");
-                    outdoorBox.setSelected(false);
-                }), error -> SwingUtilities.invokeLater(() -> {
-                    statusLabel.setText(error.getMessage());
+    private void showAddTaskDialog() {
+        JDialog dialog = new JDialog(this, "Add Task", true);
+        dialog.setLayout(new GridLayout(6, 2, 10, 10));
+        dialog.setSize(450, 300);
+
+        JTextField idField = new JTextField(UUID.randomUUID().toString().substring(0, 8));
+        idField.setEditable(false);
+        JTextField titleField = new JTextField();
+        JTextField dueField = new JTextField(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+        JCheckBox weatherBox = new JCheckBox("Weather Sensitive");
+
+        dialog.add(new JLabel(" ID:")); dialog.add(idField);
+        dialog.add(new JLabel(" Title:")); dialog.add(titleField);
+        dialog.add(new JLabel(" Due (yyyy-MM-dd HH:mm):")); dialog.add(dueField);
+        dialog.add(new JLabel("")); dialog.add(weatherBox);
+
+        JButton okBtn = new JButton("OK");
+        JButton cancelBtn = new JButton("Cancel");
+
+        dialog.add(okBtn);
+        dialog.add(cancelBtn);
+
+        okBtn.addActionListener(e -> {
+            try {
+                LocalDateTime ldt = LocalDateTime.parse(dueField.getText(), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+                Task newTask = new Task(idField.getText(), titleField.getText(), ldt, weatherBox.isSelected());
+                taskManager.createTask(newTask).subscribeOn(Schedulers.boundedElastic()).subscribe();
+                dialog.dispose();
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(dialog, "Incorrect Date format! Use: yyyy-MM-dd HH:mm");
+            }
+        });
+
+        cancelBtn.addActionListener(e -> dialog.dispose());
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    private void refreshTasks() {
+        taskManager.getTasks()
+                .subscribeOn(Schedulers.boundedElastic())
+                .collectList()
+                .subscribe(tasks -> SwingUtilities.invokeLater(() -> {
+                    tableModel.setRowCount(0);
+                    for (Task t : tasks) {
+                        tableModel.addRow(new Object[]{t.id(), t.title(), t.dateTime(), t.outdoor(), "N/A"});
+                    }
                 }));
     }
 
-    private void editTask() {
-        int row = table.getSelectedRow();
-
-        if (row == -1) {
-            statusLabel.setText("Select a task to edit");
-            return;
+    private void deleteSelectedTask() {
+        int row = taskTable.getSelectedRow();
+        if (row >= 0) {
+            String id = (String) tableModel.getValueAt(row, 0);
+            taskManager.deleteTask(id).subscribeOn(Schedulers.boundedElastic()).subscribe();
         }
-
-        String id = (String) model.getValueAt(row, 0);
-
-        Task updatedTask = new Task(
-                id,
-                titleField.getText(),
-                LocalDateTime.now(),
-                outdoorBox.isSelected()
-        );
-
-        manager.updateTask(updatedTask)
-                .flatMap(manager::getRecommendation)
-                .subscribe(rec -> SwingUtilities.invokeLater(() -> {
-                    model.setValueAt(updatedTask.getTitle(), row, 1);
-                    statusLabel.setText("Updated: " + rec.getMessage());
-                }), error -> SwingUtilities.invokeLater(() -> {
-                    statusLabel.setText(error.getMessage());
-                }));
     }
 
-    private void deleteTask() {
-        int row = table.getSelectedRow();
-
-        if (row == -1) {
-            statusLabel.setText("Select a task first");
-            return;
+    private void updateRecommendation() {
+        int row = taskTable.getSelectedRow();
+        if (row >= 0) {
+            String id = (String) tableModel.getValueAt(row, 0);
+            taskManager.getTasks()
+                    .filter(t -> t.id().equals(id))
+                    .next()
+                    .flatMap(taskManager::getRecommendation)
+                    .subscribeOn(Schedulers.boundedElastic())
+                    .subscribe(rec -> SwingUtilities.invokeLater(() -> {
+                        tableModel.setValueAt(rec.message(), row, 4);
+                    }));
         }
-
-        String id = (String) model.getValueAt(row, 0);
-
-        manager.deleteTask(id)
-                .subscribe(unused -> {
-                }, error -> SwingUtilities.invokeLater(() -> {
-                    statusLabel.setText(error.getMessage());
-                }), () -> SwingUtilities.invokeLater(() -> {
-                    model.removeRow(row);
-                    statusLabel.setText("Deleted");
-                }));
-    }
-
-    private void loadWeather() {
-        weatherService.getWeather()
-                .subscribe(weather -> SwingUtilities.invokeLater(() -> {
-                    cityLabel.setText("City: " + weather.getCityName());
-                    tempLabel.setText("Temperature: " + weather.getTemperature() + " °C");
-                    conditionLabel.setText("Condition: " + weather.getCondition());
-                    humidityLabel.setText("Humidity: " + weather.getHumidity() + "%");
-                }), error -> SwingUtilities.invokeLater(() -> {
-                    cityLabel.setText("City: Unavailable");
-                    tempLabel.setText("Temperature: —");
-                    conditionLabel.setText("Condition: —");
-                    humidityLabel.setText("Humidity: —");
-                    statusLabel.setText("Weather data unavailable.");
-                }));
     }
 }
