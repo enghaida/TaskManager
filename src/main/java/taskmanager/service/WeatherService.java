@@ -31,7 +31,7 @@ import java.util.regex.Pattern;
  */
 public class WeatherService {
 
-    private static final String API_KEY      = "3464c76dadbcea045870c81c97112f01";
+    private static final String API_KEY      = requireApiKey();
     private static final String CITY         = "Mecca";
     private static final String URL_TEMPLATE =
         "https://api.openweathermap.org/data/2.5/weather?q=%s&appid=%s&units=metric";
@@ -64,6 +64,15 @@ public class WeatherService {
     // ------------------------------------------------------------------
     // Private helpers
     // ------------------------------------------------------------------
+
+    private static String requireApiKey() {
+        String key = System.getenv("OPENWEATHER_API_KEY");
+        if (key == null || key.isBlank()) {
+            throw new IllegalStateException(
+                "Environment variable OPENWEATHER_API_KEY is not set");
+        }
+        return key;
+    }
 
     private WeatherForecast fetchOrUseCached() {
         long now = System.currentTimeMillis();

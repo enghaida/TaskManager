@@ -1,4 +1,4 @@
-package taskmanager.ui;
+package taskmanager.ui.swing;
 
 import taskmanager.api.TaskManager;
 import taskmanager.impl.TaskManagerImpl;

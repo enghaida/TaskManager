@@ -1,7 +1,7 @@
 package taskmanager;
 
 import javax.swing.SwingUtilities;
-import taskmanager.ui.SmartTaskManagerFrame;
+import taskmanager.ui.swing.SmartTaskManagerFrame;
 
 /**
  * Entry point for the Smart Task Manager application.
