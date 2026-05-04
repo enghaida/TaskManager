@@ -57,18 +57,31 @@ taskmanager/
 ## Example Usage
 
 ```java
-TaskManager manager = new TaskManagerImpl();
+import taskmanager.api.TaskManager;
+import taskmanager.impl.TaskManagerImpl;
+import taskmanager.model.Task;
 
-Task task = new Task(
-    UUID.randomUUID().toString(),
-    "Go for a walk",
-    LocalDateTime.now(),
-    true
-);
+import java.time.LocalDateTime;
+import java.util.UUID;
 
-manager.createTask(task)
-       .flatMap(manager::getRecommendation)
-       .subscribe(rec -> System.out.println(rec.getMessage()));
+public class Example {
+    public static void main(String[] args) {
+        TaskManager manager = new TaskManagerImpl();
+
+        Task task = new Task(
+            UUID.randomUUID().toString(),
+            "Go for a walk",
+            LocalDateTime.now(),
+            true // outdoor task
+        );
+
+        manager.createTask(task)
+               .flatMap(manager::getRecommendation)
+               .subscribe(rec ->
+                   System.out.println(rec.getMessage())
+               );
+    }
+}
 ```
 
 ## Notes
@@ -80,4 +93,3 @@ manager.createTask(task)
 ## Author
 
 * Ghaida
-
