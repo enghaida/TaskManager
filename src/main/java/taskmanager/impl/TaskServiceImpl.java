@@ -47,9 +47,27 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public Mono<Void> deleteTask(String id) {
         if (!storage.containsKey(id)) {
-            return Mono.error(new TaskNotFoundException("Not found"));
+            return Mono.error(new TaskNotFoundException("Not found: " + id));
         }
         storage.remove(id);
         return Mono.empty();
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws InvalidTaskException  if the task title is null or empty
+     * @throws TaskNotFoundException if no task with the given ID exists
+     */
+    @Override
+    public Mono<Task> updateTask(Task task) {
+        if (task.getTitle() == null || task.getTitle().isEmpty()) {
+            return Mono.error(new InvalidTaskException("Title required"));
+        }
+        if (!storage.containsKey(task.getId())) {
+            return Mono.error(new TaskNotFoundException("Not found: " + task.getId()));
+        }
+        storage.put(task.getId(), task);
+        return Mono.just(task);
     }
 }

@@ -39,13 +39,18 @@ public class TaskManagerImpl implements TaskManager {
     }
 
     /**
-     * Deletes a task by its unique identifier.
-     *
-     * @param id the ID of the task to delete
-     * @return an empty {@link Mono} on success, or an error signal with
-     *         {@link taskmanager.exception.TaskNotFoundException} if not found
+     * {@inheritDoc}
      */
+    @Override
     public Mono<Void> deleteTask(String id) {
         return taskService.deleteTask(id);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Mono<Task> updateTask(Task task) {
+        return taskService.updateTask(task);
     }
 }

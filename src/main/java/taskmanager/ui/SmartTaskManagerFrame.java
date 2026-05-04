@@ -38,12 +38,14 @@ public class SmartTaskManagerFrame extends JFrame {
 
         JPanel top = new JPanel();
         JButton addBtn = new JButton("Add");
+        JButton editBtn = new JButton("Edit");
         JButton deleteBtn = new JButton("Delete");
 
         top.add(new JLabel("Title:"));
         top.add(titleField);
         top.add(outdoorBox);
         top.add(addBtn);
+        top.add(editBtn);
         top.add(deleteBtn);
 
         add(top, BorderLayout.NORTH);
@@ -70,17 +72,42 @@ public class SmartTaskManagerFrame extends JFrame {
                 });
         });
 
+        editBtn.addActionListener(e -> {
+            int row = table.getSelectedRow();
+            if (row == -1) {
+                statusLabel.setText("Select a task to edit.");
+                return;
+            }
+            String id = (String) model.getValueAt(row, 0);
+            String newTitle = titleField.getText();
+            if (newTitle.isEmpty()) {
+                statusLabel.setText("Enter a new title in the field.");
+                return;
+            }
+            Task updated = new Task(id, newTitle, LocalDateTime.now(), outdoorBox.isSelected());
+            manager.updateTask(updated)
+                .subscribe(
+                    t -> SwingUtilities.invokeLater(() -> {
+                        model.setValueAt(t.getTitle(), row, 1);
+                        statusLabel.setText("Updated");
+                    }),
+                    error -> SwingUtilities.invokeLater(() -> statusLabel.setText(error.getMessage()))
+                );
+        });
+
         deleteBtn.addActionListener(e -> {
             int row = table.getSelectedRow();
             if (row != -1) {
                 String id = (String) model.getValueAt(row, 0);
                 manager.deleteTask(id)
-                    .subscribe(() -> {
-                        SwingUtilities.invokeLater(() -> {
-                            model.removeRow(row);
-                            statusLabel.setText("Deleted");
-                        });
-                    });
+                .subscribe(
+                    null,
+                    error -> SwingUtilities.invokeLater(() -> statusLabel.setText(error.getMessage())),
+                    () -> SwingUtilities.invokeLater(() -> {
+                        model.removeRow(row);
+                        statusLabel.setText("Deleted");
+                    })
+                );
             }
         });
 

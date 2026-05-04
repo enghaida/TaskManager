@@ -34,4 +34,25 @@ public interface TaskManager {
      * @return a {@link Mono} emitting a {@link ScheduleRecommendation}
      */
     Mono<ScheduleRecommendation> getRecommendation(Task task);
+
+    /**
+     * Deletes the task with the given ID.
+     *
+     * @param id the unique identifier of the task to delete
+     * @return an empty {@link Mono} on success, or an error signal with
+     *         {@link taskmanager.exception.TaskNotFoundException} if no task
+     *         with that ID exists
+     */
+    Mono<Void> deleteTask(String id);
+
+    /**
+     * Updates an existing task.
+     *
+     * @param task the updated task; must have a valid ID and non-empty title
+     * @return a {@link Mono} emitting the updated task, or an error signal with
+     *         {@link taskmanager.exception.TaskNotFoundException} if the task
+     *         does not exist, or {@link taskmanager.exception.InvalidTaskException}
+     *         if the title is missing
+     */
+    Mono<Task> updateTask(Task task);
 }

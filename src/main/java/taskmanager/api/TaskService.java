@@ -37,4 +37,18 @@ public interface TaskService {
      *         task with that ID exists
      */
     Mono<Void> deleteTask(String id);
+
+    /**
+     * Updates an existing task in the store.
+     *
+     * <p>Precondition: a task with {@code task.getId()} must already exist.
+     * Postcondition: the stored task is replaced with the provided task.
+     *
+     * @param task the updated task; title must not be null or empty
+     * @return a {@link Mono} emitting the updated task, or an error signal with
+     *         {@link taskmanager.exception.TaskNotFoundException} if no task with
+     *         that ID exists, or {@link taskmanager.exception.InvalidTaskException}
+     *         if the title is missing
+     */
+    Mono<Task> updateTask(Task task);
 }
