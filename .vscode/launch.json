@@ -1,0 +1,13 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Run TaskManager",
+            "request": "launch",
+            "mainClass": "taskmanager.MainApp",
+            "projectName": "my-reactor-project",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}
