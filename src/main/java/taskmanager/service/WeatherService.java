@@ -32,7 +32,7 @@ import java.util.regex.Pattern;
 public class WeatherService {
 
     private static final String API_KEY      = "3464c76dadbcea045870c81c97112f01";
-    private static final String CITY         = "Makkah";
+    private static final String CITY         = "Mecca";
     private static final String URL_TEMPLATE =
         "https://api.openweathermap.org/data/2.5/weather?q=%s&appid=%s&units=metric";
 
@@ -119,7 +119,7 @@ public class WeatherService {
             "\"weather\":\\[\\{[^}]*\"main\":\"([^\"]+)\"", 1, "Unknown");
 
         // main.temp — first numeric value after "temp":
-        double temp = parseDouble(extract(json, "\"temp\":([\\d.]+)", 1, "25.0"), 25.0);
+        double temp = parseDouble(extract(json, "\"temp\":(-?[\\d.]+)", 1, "25.0"), 25.0);
 
         // main.humidity
         int hum = parseInt(extract(json, "\"humidity\":(\\d+)", 1, "50"), 50);
